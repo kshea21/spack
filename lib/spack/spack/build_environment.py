@@ -992,6 +992,7 @@ def effective_deptypes(
     return nodes_with_type
 
 
+
 class SetupContext:
     """This class encapsulates the logic to determine environment modifications, and is used as
     well to set globals in modules of package.py."""
@@ -1138,6 +1139,54 @@ class SetupContext:
             if os.path.isdir(bin_dir):
                 env.prepend_path("PATH", bin_dir)
 
+# class that can track the state of a process (so that it can be used concurrently)
+class ProcessHandle():
+    def __init__ (self, process, read_pipe):
+        self.process = process
+        self.read_pipe = read_pipe
+
+    def poll(self):
+        return self.process.poll()
+
+    def complete(self):
+        # all of hte error handling from 'start build process' 
+        def exitcode_msg(process):
+            typ = "exit" if process.exitcode >= 0 else "signal"
+            return f"{typ} {abs(p.exitcode)}"
+
+        try:
+            # this is the completition thing 
+            # if poll true -> recv 
+            child_result = self.read_pipe.recv()
+        except EOFError:
+            self.process.join()
+            raise InstallError(f"The process has stopped unexpectedly ({exitcode_msg(p)})")
+
+        self.process.join()
+
+        # If returns a StopPhase, raise it
+        if isinstance(child_result, spack.error.StopPhase):
+            # do not print
+            raise child_result
+
+        # let the caller know which package went wrong.
+        if isinstance(child_result, InstallError):
+            child_result.pkg = pkg
+
+        if isinstance(child_result, ChildError):
+            # If the child process raised an error, print its output here rather
+            # than waiting until the call to SpackError.die() in main(). This
+            # allows exception handling output to be logged from within Spack.
+            # see spack.main.SpackCommand.
+            child_result.print_context()
+            raise child_result
+
+        # Fallback. Usually caught beforehand in EOFError above.
+        if self.process.exitcode != 0:
+            raise InstallError(f"The process failed unexpectedly ({exitcode_msg(p)})")
+
+        return child_result
+
 
 def _setup_pkg_and_run(
     serialized_pkg: "spack.subprocess_context.PackageInstallContext",
@@ -1184,8 +1233,10 @@ def _setup_pkg_and_run(
         jsfd2: gmake Jobserver file descriptor 2.
 
     """
-
+        
+        
     context: str = kwargs.get("context", "build")
+
 
     try:
         # We are in the child process. Python sets sys.stdin to
@@ -1276,6 +1327,7 @@ def start_build_process(pkg, function, kwargs):
             child process for.
         function (typing.Callable): argless function to run in the child
             process.
+        kwargs: (Dict) additional keyword arguments to pass to ``function()``
 
     Usage::
 
@@ -1310,6 +1362,7 @@ def start_build_process(pkg, function, kwargs):
     input_multiprocess_fd = None
     jobserver_fd1 = None
     jobserver_fd2 = None
+    num_active_processes = 0
 
     serialized_pkg = spack.subprocess_context.PackageInstallContext(pkg)
 
@@ -1324,7 +1377,7 @@ def start_build_process(pkg, function, kwargs):
             if m:
                 jobserver_fd1 = MultiProcessFd(int(m.group(1)))
                 jobserver_fd2 = MultiProcessFd(int(m.group(2)))
-
+        
         p = multiprocessing.Process(
             target=_setup_pkg_and_run,
             args=(
@@ -1337,13 +1390,15 @@ def start_build_process(pkg, function, kwargs):
                 jobserver_fd2,
             ),
         )
-
+        
         p.start()
 
         # We close the writable end of the pipe now to be sure that p is the
         # only process which owns a handle for it. This ensures that when p
         # closes its handle for the writable end, read_pipe.recv() will
         # promptly report the readable end as being ready.
+        
+        #maybe not going to want to close the write_pipe here anymore?
         write_pipe.close()
 
     except InstallError as e:
@@ -1355,41 +1410,17 @@ def start_build_process(pkg, function, kwargs):
         if input_multiprocess_fd is not None:
             input_multiprocess_fd.close()
 
-    def exitcode_msg(p):
-        typ = "exit" if p.exitcode >= 0 else "signal"
-        return f"{typ} {abs(p.exitcode)}"
+    handle = ProcessHandle(p, read_pipe)
+    return handle.complete()
+    # return handle.complete()
 
-    try:
-        child_result = read_pipe.recv()
-    except EOFError:
-        p.join()
-        raise InstallError(f"The process has stopped unexpectedly ({exitcode_msg(p)})")
+    #everything before 1360 is start stuff ###### which will return process_handle (invent)
+    # handle = ProcessHandle(p,read_pipe)
+    # return handle.complete() --> eventually just return handle, change the caller(s) 
+    ###everything below here goes into complete
 
-    p.join()
-
-    # If returns a StopPhase, raise it
-    if isinstance(child_result, spack.error.StopPhase):
-        # do not print
-        raise child_result
-
-    # let the caller know which package went wrong.
-    if isinstance(child_result, InstallError):
-        child_result.pkg = pkg
-
-    if isinstance(child_result, ChildError):
-        # If the child process raised an error, print its output here rather
-        # than waiting until the call to SpackError.die() in main(). This
-        # allows exception handling output to be logged from within Spack.
-        # see spack.main.SpackCommand.
-        child_result.print_context()
-        raise child_result
-
-    # Fallback. Usually caught beforehand in EOFError above.
-    if p.exitcode != 0:
-        raise InstallError(f"The process failed unexpectedly ({exitcode_msg(p)})")
-
-    return child_result
-
+    # need read_pipe to talk to process so i can read from process and join it
+    # class that has read pipe and process and that's the object that i return that task stores, get info to 
 
 CONTEXT_BASES = (spack.package_base.PackageBase, spack.build_systems._checks.BaseBuilder)
 
