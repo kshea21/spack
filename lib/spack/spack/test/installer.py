@@ -1240,7 +1240,8 @@ def test_overwrite_install_backup_success(
     of the original prefix, and leave the original spec marked installed.
     """
     # Get a build task. TODO: Refactor this to avoid calling internal methods.
-    installer = create_installer(["pkg-b"])
+    # This task relies on installing something with no dependencies
+    installer = create_installer(["pkg-c"])
     installer._init_queue()
     task = installer._pop_task()
     install_status = MockInstallStatus()

@@ -863,6 +863,8 @@ class TestSuite:
 
         self.counts: "Counter" = Counter()
 
+        self.reports = []
+
     @property
     def name(self) -> str:
         """The name (alias or, if none, hash) of the test suite."""
@@ -891,6 +893,14 @@ class TestSuite:
     ):
         self.write_reproducibility_data()
         for spec in self.specs:
+            # Setup cdash/junit/etc reports
+            report = spack.report.RequestRecord(spec)
+            self.reports.append(report)
+
+            record = spack.report.TestRecord(spec, self.stage)
+            report.append_record(record)
+            record.start()
+
             try:
                 if spec.package.test_suite:
                     raise TestSuiteSpecError(
@@ -918,13 +928,17 @@ class TestSuite:
                 status = self.test_status(spec, externals)
                 self.counts[status] += 1
                 self.write_test_result(spec, status)
+                record.succeed(externals)
 
             except SkipTest:
+                record.skip(msg="Test marked to skip")
                 status = TestStatus.SKIPPED
                 self.counts[status] += 1
                 self.write_test_result(spec, TestStatus.SKIPPED)
 
             except BaseException as exc:
+                record.fail(exc)
+
                 status = TestStatus.FAILED
                 self.counts[status] += 1
                 tty.debug(f"Test failure: {str(exc)}")

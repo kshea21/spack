@@ -1421,12 +1421,9 @@ def complete_build_process(handle: ProcessHandle):
         # Check if information from the read pipe has been received.
         child_result = handle.read_pipe.recv()
     except EOFError:
-        handle.process.join()
         raise InstallError(
             f"The process has stopped unexpectedly ({exitcode_msg(handle.process)})"
         )
-
-    handle.process.join()
 
     # If returns a StopPhase, raise it
     if isinstance(child_result, spack.error.StopPhase):
