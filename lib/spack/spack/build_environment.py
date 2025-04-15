@@ -1108,52 +1108,6 @@ def load_external_modules(context: SetupContext) -> None:
             load_module(external_module)
 
 
-class ProcessHandle:
-    """Manages and monitors the state of a child process for package installation."""
-
-    def __init__(
-        self,
-        pkg: "spack.package_base.PackageBase",
-        process: multiprocessing.Process,
-        read_pipe: multiprocessing.connection.Connection,
-        timeout: int,
-    ):
-        """
-        Parameters:
-           pkg: The package to be built and installed by the child process.
-           process: The child process instance being managed/monitored.
-           read_pipe: The pipe used for receiving information from the child process.
-        """
-        self.pkg = pkg
-        self.process = process
-        self.read_pipe = read_pipe
-        self.timeout = timeout
-
-    def poll(self) -> bool:
-        """Check if there is data available to receive from the read pipe."""
-        return self.read_pipe.poll()
-
-    def complete(self):
-        """Wait (if needed) for child process to complete
-        and return its exit status.
-
-        See ``complete_build_process()``.
-        """
-        return complete_build_process(self)
-
-    def terminate_processes(self):
-        """Terminate the active child processes if installation failure/error"""
-        if self.process.is_alive():
-            # opportunity for graceful termination
-            self.process.terminate()
-            self.process.join(timeout=1)
-
-            # if the process didn't gracefully terminate, forcefully kill
-            if self.process.is_alive():
-                os.kill(self.process.pid, signal.SIGKILL)
-                self.process.join()
-
-
 def _setup_pkg_and_run(
     serialized_pkg: "spack.subprocess_context.PackageInstallContext",
     function: Callable,
@@ -1280,11 +1234,26 @@ def _setup_pkg_and_run(
 
 
 class BuildProcess:
-    def __init__(self, *, target, args) -> None:
+    def __init__(self, *, target, args, pkg, read_pipe, timeout) -> None:
         self.p = multiprocessing.Process(target=target, args=args)
+        self.pkg = pkg
+        self.read_pipe = read_pipe
+        self.timeout = timeout
 
     def start(self) -> None:
         self.p.start()
+
+    def poll(self) -> bool:
+        """Check if there is data available to receive from the read pipe."""
+        return self.read_pipe.poll()
+
+    def complete(self):
+        """Wait (if needed) for child process to complete
+        and return its exit status.
+
+        See ``complete_build_process()``.
+        """
+        return complete_build_process(self)
 
     def is_alive(self) -> bool:
         return self.p.is_alive()
@@ -1293,6 +1262,9 @@ class BuildProcess:
         self.p.join(timeout=timeout)
 
     def terminate(self):
+        if not self.p.is_alive():
+            return
+
         # Opportunity for graceful termination
         self.p.terminate()
         self.p.join(timeout=1)
@@ -1334,7 +1306,8 @@ def start_build_process(
 
         def child_fun():
             # do stuff
-        build_env.start_build_process(pkg, child_fun)
+        process = build_env.start_build_process(pkg, child_fun)
+        complete_build_process(process)
 
     The child process is run with the build environment set up by
     spack.build_environment.  This allows package authors to have full
@@ -1371,6 +1344,9 @@ def start_build_process(
                 jobserver_fd1,
                 jobserver_fd2,
             ),
+            read_pipe=read_pipe,
+            timeout=timeout,
+            pkg=pkg,
         )
 
         p.start()
@@ -1390,13 +1366,10 @@ def start_build_process(
         if input_fd is not None:
             input_fd.close()
 
-    # Create a ProcessHandle that the caller can use to track
-    # and complete the process started by this function.
-    process_handle = ProcessHandle(pkg, p, read_pipe, timeout=timeout)
-    return process_handle
+    return p
 
 
-def complete_build_process(handle: ProcessHandle):
+def complete_build_process(process: BuildProcess):
     """
     Waits for the child process to complete and handles its exit status.
 
@@ -1406,24 +1379,21 @@ def complete_build_process(handle: ProcessHandle):
     """
 
     def exitcode_msg(process):
-        typ = "exit" if handle.process.exitcode >= 0 else "signal"
-        return f"{typ} {abs(handle.process.exitcode)}"
+        typ = "exit" if process.exitcode >= 0 else "signal"
+        return f"{typ} {abs(process.exitcode)}"
 
-    p = handle.process
-    timeout = handle.timeout
-    p.join(timeout=timeout)
-    if p.is_alive():
+    timeout = process.timeout
+    process.join(timeout=timeout)
+    if process.is_alive():
         warnings.warn(f"Terminating process, since the timeout of {timeout}s was exceeded")
-        p.terminate()
-        p.join()
+        process.terminate()
+        process.join()
 
     try:
         # Check if information from the read pipe has been received.
-        child_result = handle.read_pipe.recv()
+        child_result = process.read_pipe.recv()
     except EOFError:
-        raise InstallError(
-            f"The process has stopped unexpectedly ({exitcode_msg(handle.process)})"
-        )
+        raise InstallError(f"The process has stopped unexpectedly ({exitcode_msg(process)})")
 
     # If returns a StopPhase, raise it
     if isinstance(child_result, spack.error.StopPhase):
@@ -1431,7 +1401,7 @@ def complete_build_process(handle: ProcessHandle):
 
     # let the caller know which package went wrong.
     if isinstance(child_result, InstallError):
-        child_result.pkg = handle.pkg
+        child_result.pkg = process.pkg
 
     if isinstance(child_result, ChildError):
         # If the child process raised an error, print its output here rather
@@ -1442,8 +1412,8 @@ def complete_build_process(handle: ProcessHandle):
         raise child_result
 
     # Fallback. Usually caught beforehand in EOFError above.
-    if handle.process.exitcode != 0:
-        raise InstallError(f"The process failed unexpectedly ({exitcode_msg(handle.process)})")
+    if process.exitcode != 0:
+        raise InstallError(f"The process failed unexpectedly ({exitcode_msg(process)})")
 
     return child_result
 

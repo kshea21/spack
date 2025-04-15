@@ -808,14 +808,22 @@ class _TestProcess:
     terminated = False
     runtime = 0
 
-    def __init__(self, *, target, args):
+    def __init__(self, *, target, args, pkg, read_pipe, timeout):
         self.alive = None
         self.exitcode = 0
         self._reset()
+        self.read_pipe = read_pipe
+        self.timeout = timeout
 
     def start(self):
         self.calls["start"] += 1
         self.alive = True
+
+    def poll(self):
+        return True
+
+    def complete(self):
+        return None
 
     def is_alive(self):
         self.calls["is_alive"] += 1
@@ -880,9 +888,9 @@ def mock_build_process(monkeypatch):
 def test_build_process_timeout(mock_build_process, runtime, timeout, expected_calls):
     """Tests that we make the correct function calls in different timeout scenarios."""
     mock_build_process(runtime=runtime)
-    handle = spack.build_environment.start_build_process(
+    process = spack.build_environment.start_build_process(
         pkg=None, function=None, kwargs={}, timeout=timeout
     )
-    _ = spack.build_environment.complete_build_process(handle)
+    _ = spack.build_environment.complete_build_process(process)
 
     assert _TestProcess.calls == expected_calls

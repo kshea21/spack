@@ -1230,7 +1230,7 @@ def check_db(spec: "spack.spec.Spec") -> Tuple[Optional[spack.database.InstallRe
 class BuildTask(Task):
     """Class for representing a build task for a package."""
 
-    process_handle: Optional["spack.build_environment.ProcessHandle"] = None
+    process_handle: Optional["spack.build_environment.BuildProcess"] = None
     started: bool = False
     no_op: bool = False
     tmpdir = None
@@ -1289,7 +1289,7 @@ class BuildTask(Task):
         )
 
         # Identify the child process
-        self.child_pid = self.process_handle.process.pid
+        self.child_pid = self.process_handle.pid
 
     def poll(self):
         """Check if task has successfully executed, caused an InstallError,
@@ -1381,7 +1381,7 @@ class BuildTask(Task):
     def terminate(self) -> None:
         """Terminate any processes this task still has running."""
         if self.process_handle:
-            self.process_handle.terminate_processes()
+            self.process_handle.terminate()
 
 
 class RewireTask(Task):
