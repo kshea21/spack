@@ -10,14 +10,13 @@ from typing import List
 
 import llnl.util.filesystem as fs
 from llnl.string import plural
-from llnl.util import lang, tty
+from llnl.util import tty
 
 import spack.cmd
 import spack.concretize
 import spack.config
 import spack.environment as ev
 import spack.paths
-import spack.report
 import spack.spec
 import spack.store
 from spack.cmd.common import arguments

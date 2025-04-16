@@ -1332,7 +1332,6 @@ class BuildTask(Task):
         assert (
             self.started or self.no_op
         ), "Can't call `complete()` before `start()` or identified no-operation task"
-        install_args = self.request.install_args
         pkg = self.pkg
 
         self.status = BuildStatus.INSTALLING
@@ -1554,7 +1553,7 @@ class PackageInstaller:
         self.max_active_tasks = concurrent_packages
 
         # Reports on install success/failure
-        self.reports: Dict[str, dict] = {}
+        self.reports: Dict[str, spack.report.RequestRecord] = {}
         for build_request in self.build_requests:
             # Skip reporting for already installed specs
             request_record = spack.report.RequestRecord(build_request.pkg.spec)

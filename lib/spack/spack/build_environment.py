@@ -86,6 +86,7 @@ import spack.stage
 import spack.store
 import spack.subprocess_context
 import spack.util.executable
+import spack.util.libc
 from spack import traverse
 from spack.context import Context
 from spack.error import InstallError, NoHeadersError, NoLibrariesError

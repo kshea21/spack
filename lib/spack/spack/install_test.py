@@ -26,6 +26,7 @@ import spack.error
 import spack.package_base
 import spack.paths
 import spack.repo
+import spack.report
 import spack.spec
 import spack.util.executable
 import spack.util.path
@@ -863,7 +864,7 @@ class TestSuite:
 
         self.counts: "Counter" = Counter()
 
-        self.reports = []
+        self.reports: List[spack.report.RequestRecord] = []
 
     @property
     def name(self) -> str:

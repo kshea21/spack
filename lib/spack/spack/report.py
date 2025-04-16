@@ -8,8 +8,6 @@ import os
 import time
 import traceback
 
-import llnl.util.filesystem as fs
-
 import spack.build_environment
 import spack.util.spack_json as sjson
 

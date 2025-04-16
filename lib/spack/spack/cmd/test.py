@@ -10,7 +10,7 @@ import shutil
 import sys
 from collections import Counter
 
-from llnl.util import lang, tty
+from llnl.util import tty
 from llnl.util.tty import colify
 
 import spack.cmd
@@ -18,7 +18,6 @@ import spack.config
 import spack.environment as ev
 import spack.install_test
 import spack.repo
-import spack.report
 import spack.store
 from spack.cmd.common import arguments
 
