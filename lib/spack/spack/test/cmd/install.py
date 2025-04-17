@@ -61,7 +61,8 @@ def test_install_package_and_dependency(
     assert filename in files
 
     content = filename.open().read()
-    assert 'tests="4"' in content
+
+    assert 'tests="5"' in content
     assert 'failures="0"' in content
     assert 'errors="0"' in content
 
