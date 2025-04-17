@@ -48,9 +48,9 @@ class RequestRecord(Record):
         self.packages = []
 
     def skip_installed(self):
-        for dep in filter(lambda x: x.installed, self._spec.traverse()):
+        for dep in filter(lambda x: x.installed or x.external, self._spec.traverse()):
             record = InstallRecord(dep)
-            record.skip(msg="Spec already installed")
+            record.skip(msg="Spec external or already installed")
             self.packages.append(record)
 
     def append_record(self, record):

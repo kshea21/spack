@@ -1339,7 +1339,9 @@ class BuildTask(Task):
         # If task has been identified as a no operation,
         # return ExecuteResult.NOOP
         if self.no_op:
-            self.succeed()
+            # This is one exit point that does not need to call
+            # self.succeed/fail. Job is either a no_op (external, upstream)
+            # or requeued.
             return ExecuteResult.NO_OP
 
         # If installing a package from binary cache is successful,
