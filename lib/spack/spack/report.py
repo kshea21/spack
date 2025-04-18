@@ -8,8 +8,7 @@ import os
 import time
 import traceback
 
-import spack.build_environment
-import spack.util.spack_json as sjson
+import spack.error
 
 reporter = None
 report_file = None
@@ -82,7 +81,7 @@ class SpecRecord(Record):
         self.message = msg
 
     def fail(self, exc):
-        if isinstance(exc, spack.build_environment.InstallError):
+        if isinstance(exc, spack.error.InstallError):
             self.result = "failure"
             self.message = exc.message or "Installation failure"
             self.exception = exc.traceback
@@ -116,14 +115,6 @@ class InstallRecord(SpecRecord):
                 return f.read()
         except OSError:
             return f"Cannot open log for {self._spec.cshort_spec}"
-
-    def fetch_time(self):
-        try:
-            with open(self._package.times_log_path, "r", encoding="utf-8") as f:
-                data = sjson.load(f.read())
-            return data["total"]
-        except Exception:
-            return None
 
     def succeed(self):
         super().succeed()
