@@ -453,35 +453,6 @@ def optimization_flags(compiler, target):
     return result
 
 
-class FilterDefaultDynamicLinkerSearchPaths:
-    """Remove rpaths to directories that are default search paths of the dynamic linker."""
-
-    def __init__(self, dynamic_linker: Optional[str]) -> None:
-        # Identify directories by (inode, device) tuple, which handles symlinks too.
-        self.default_path_identifiers: Set[Tuple[int, int]] = set()
-        if not dynamic_linker:
-            return
-        for path in spack.util.libc.default_search_paths_from_dynamic_linker(dynamic_linker):
-            try:
-                s = os.stat(path)
-                if stat.S_ISDIR(s.st_mode):
-                    self.default_path_identifiers.add((s.st_ino, s.st_dev))
-            except OSError:
-                continue
-
-    def is_dynamic_loader_default_path(self, p: str) -> bool:
-        try:
-            s = os.stat(p)
-            return (s.st_ino, s.st_dev) in self.default_path_identifiers
-        except OSError:
-            return False
-
-    def __call__(self, dirs: List[str]) -> List[str]:
-        if not self.default_path_identifiers:
-            return dirs
-        return [p for p in dirs if not self.is_dynamic_loader_default_path(p)]
-
-
 def set_wrapper_variables(pkg, env):
     """Set environment variables used by the Spack compiler wrapper (which have the prefix
     `SPACK_`) and also add the compiler wrappers to PATH.
@@ -1235,7 +1206,26 @@ def _setup_pkg_and_run(
 
 
 class BuildProcess:
-    def __init__(self, *, target, args, pkg, read_pipe, timeout) -> None:
+    """Class used to manage builds launched by Spack.
+
+    Each build is launched in its own child process, and the main Spack process
+    tracks each child with a ``BuildProcess`` object. `BuildProcess`` is used to:
+    - Start and monitor an active child process.
+    - Clean up its processes and resources when the child process completes.
+    - Kill the child process if needed.
+
+    See also ``start_build_process()`` and ``complete_build_process()``.
+    """
+
+    def __init__(
+        self,
+        *,
+        target: Callable,
+        args: Tuple[Any, ...],
+        pkg: "spack.package_base.PackageBase",
+        read_pipe: Connection,
+        timeout: Optional[int],
+    ) -> None:
         self.p = multiprocessing.Process(target=target, args=args)
         self.pkg = pkg
         self.read_pipe = read_pipe
@@ -1263,8 +1253,7 @@ class BuildProcess:
         self.p.join(timeout=timeout)
 
     def terminate(self):
-        if not self.p.is_alive():
-            return
+        return
 
         # Opportunity for graceful termination
         self.p.terminate()
@@ -1292,7 +1281,7 @@ def start_build_process(
     kwargs: Dict[str, Any],
     *,
     timeout: Optional[int] = None,
-):
+) -> BuildProcess:
     """Create a child process to do part of a spack build.
 
     Args:
@@ -1372,7 +1361,7 @@ def start_build_process(
 
 def complete_build_process(process: BuildProcess):
     """
-    Waits for the child process to complete and handles its exit status.
+    Wait for the child process to complete and handles its exit status.
 
     If something goes wrong, the child process catches the error and
     passes it to the parent wrapped in a ChildError.  The parent is
@@ -1388,7 +1377,6 @@ def complete_build_process(process: BuildProcess):
     if process.is_alive():
         warnings.warn(f"Terminating process, since the timeout of {timeout}s was exceeded")
         process.terminate()
-        process.join()
 
     try:
         # Check if information from the read pipe has been received.

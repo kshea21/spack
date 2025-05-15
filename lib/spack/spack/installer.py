@@ -76,7 +76,7 @@ from spack.util.executable import which
 #: were added (see https://docs.python.org/2/library/heapq.html).
 _counter = itertools.count(0)
 
-_fail_fast_err = "Terminating after first install failure"
+_FAIL_FAST_ERR = "Terminating after first install failure"
 
 
 class BuildStatus(enum.Enum):
@@ -1251,17 +1251,18 @@ class BuildTask(Task):
 
         assert not self.started, "Cannot start a task that has already been started."
         self.started = True
+        self.start_time = self.start_time or time.time()
 
         install_args = self.request.install_args
         unsigned = install_args.get("unsigned")
         pkg, pkg_id = self.pkg, self.pkg_id
-        self.start_time = self.start_time or time.time()
 
         tests = install_args.get("tests")
         pkg.run_tests = tests is True or tests and pkg.name in tests
 
         # Use the binary cache to install if requested,
         # save result to be handled in BuildTask.complete()
+        # TODO: change binary installs to occur in subprocesses rather than the main Spack process
         if self.use_cache:
             if _install_from_cache(pkg, self.explicit, unsigned):
                 self.success_result = ExecuteResult.SUCCESS
@@ -2204,7 +2205,7 @@ class PackageInstaller:
     def start_task(
         self, task: Task, install_status: InstallStatus, term_status: TermStatusLine
     ) -> None:
-        """Attempts to start a package installation."""
+        """Attempt to start a package installation."""
         pkg, pkg_id, spec = task.pkg, task.pkg_id, task.pkg.spec
         install_status.next_pkg(pkg)
         # install_status.set_term_title(f"Processing {task.pkg.name}")
@@ -2230,7 +2231,7 @@ class PackageInstaller:
             self._update_failed(task)
 
             if self.fail_fast:
-                task.error_result = spack.error.InstallError(_fail_fast_err, pkg=pkg)
+                task.error_result = spack.error.InstallError(_FAIL_FAST_ERR, pkg=pkg)
 
         # Attempt to get a write lock.  If we can't get the lock then
         # another process is likely (un)installing the spec or has
@@ -2374,7 +2375,7 @@ class PackageInstaller:
                 )
             # Terminate if requested to do so on the first failure.
             if self.fail_fast:
-                raise spack.error.InstallError(f"{_fail_fast_err}: {str(exc)}", pkg=pkg) from exc
+                raise spack.error.InstallError(f"{_FAIL_FAST_ERR}: {str(exc)}", pkg=pkg) from exc
 
             # Terminate when a single build request has failed, or summarize errors later.
             if task.is_build_request:

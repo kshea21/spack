@@ -19,8 +19,5 @@ class ParallelPackageC(Package):
     version("1.0")
 
     def install(self, spec, prefix):
-        print("Package 3 building!")
         time.sleep(2)
-        print("Ideally shouldnt get here and it should fail")
-
         touch(prefix.dummy_file)

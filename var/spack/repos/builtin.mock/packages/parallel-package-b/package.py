@@ -19,8 +19,5 @@ class ParallelPackageB(Package):
     version("1.0")
 
     def install(self, spec, prefix):
-        print("I'm building!")
         time.sleep(6)
-        print("I'm done!")
-
         touch(prefix.dummy_file)

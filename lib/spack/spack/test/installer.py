@@ -1011,7 +1011,6 @@ _old_complete_task = None
 
 def _install_fail_my_build_exception(installer, task, install_status, **kwargs):
     if task.pkg.name == "pkg-a":
-        print("Raising MyBuildException for pkg-a")
         raise MyBuildException("mock internal package build error for pkg-a")
     else:
         _old_complete_task(installer, task, install_status)
@@ -1222,7 +1221,6 @@ def test_install_implicit(install_mockery, mock_fetch):
 
 # Install that wipes the prefix directory
 def wipe_prefix(pkg, install_args):
-    print("AAAAAAAAA")
     shutil.rmtree(pkg.prefix, ignore_errors=True)
     fs.mkdirp(pkg.prefix)
     raise Exception("Some fatal install error")
