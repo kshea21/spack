@@ -4,6 +4,7 @@
 """Optimized Spack implementations of methods from socket module."""
 
 import socket
+
 import llnl.util.lang
 
 
