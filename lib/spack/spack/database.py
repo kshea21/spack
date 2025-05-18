@@ -21,7 +21,6 @@ import contextlib
 import datetime
 import os
 import pathlib
-import socket
 import sys
 import time
 from json import JSONDecoder
@@ -53,7 +52,6 @@ except ImportError:
     pass
 
 import llnl.util.filesystem as fs
-import llnl.util.lang
 import llnl.util.tty as tty
 
 import spack.deptypes as dt
