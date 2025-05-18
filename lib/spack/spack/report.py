@@ -19,7 +19,7 @@ Property = collections.namedtuple("Property", ["name", "value"])
 class Record(dict):
     """Data class that provides attr-style access to a dictionary
 
-    Attributes beginning with `_` are reserved for the Record class itself."""
+    Attributes beginning with ``_`` are reserved for the Record class itself."""
 
     def __getattr__(self, name):
         # only called if no attribute exists
@@ -38,7 +38,7 @@ class RequestRecord(Record):
     """Data class for recording outcomes for an entire DAG
 
     Each BuildRequest in the installer and each root spec in a TestSuite generates a
-    RequestRecord. The ``packages'' list of the RequestRecord is a list of SpecRecord
+    RequestRecord. The ``packages`` list of the RequestRecord is a list of SpecRecord
     objects recording individual data for each node in the Spec represented by the
     RequestRecord.
 
