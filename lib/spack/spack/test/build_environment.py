@@ -882,7 +882,7 @@ def mock_build_process(monkeypatch):
         # execution time < timeout
         (2, 5, {"start": 1, "join": 1, "is_alive": 1}),
         # execution time > timeout
-        (5, 2, {"start": 1, "join": 2, "is_alive": 1, "terminate": 1}),
+        (5, 2, {"start": 1, "join": 1, "is_alive": 1, "terminate": 1}),
     ],
 )
 def test_build_process_timeout(mock_build_process, runtime, timeout, expected_calls):
