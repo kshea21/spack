@@ -4,10 +4,11 @@
 
 import time
 
+from spack_repo.builtin.build_systems.generic import Package
+
 from llnl.util.filesystem import touch
 
 from spack.package import *
-from spack_repo.builtin.build_systems.generic import Package
 
 
 class ParallelPackageA(Package):
