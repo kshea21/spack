@@ -18,8 +18,8 @@ class ParallelPackageA(Package):
     homepage = "http://www.example.com"
     has_code = False
 
-    depends_on("parallel-package-b")
-    depends_on("parallel-package-c")
+    depends_on("parallel_package_b")
+    depends_on("parallel_package_c")
 
     version("1.0")
 
