@@ -7,14 +7,18 @@ import time
 from llnl.util.filesystem import touch
 
 from spack.package import *
+from spack_repo.builtin.build_systems.generic import Package
 
 
-class ParallelPackageC(Package):
+class ParallelPackageA(Package):
     """This is a fake vtk-m package used to demonstrate virtual package providers
     with dependencies."""
 
     homepage = "http://www.example.com"
     has_code = False
+
+    depends_on("parallel-package-b")
+    depends_on("parallel-package-c")
 
     version("1.0")
 

@@ -7,9 +7,10 @@ import time
 from llnl.util.filesystem import touch
 
 from spack.package import *
+from spack_repo.builtin.build_systems.generic import Package
 
 
-class ParallelPackageB(Package):
+class ParallelPackageC(Package):
     """This is a fake vtk-m package used to demonstrate virtual package providers
     with dependencies."""
 
@@ -19,5 +20,5 @@ class ParallelPackageB(Package):
     version("1.0")
 
     def install(self, spec, prefix):
-        time.sleep(6)
+        time.sleep(2)
         touch(prefix.dummy_file)
