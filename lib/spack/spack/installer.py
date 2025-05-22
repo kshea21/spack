@@ -2431,20 +2431,20 @@ class PackageInstaller:
             time.sleep(0.1)
             # Check if any tasks have completed and add to list
             done = [task for task in active_tasks if task.poll()]
-            # Iterate through the done tasks and complete them
-            for task in done:
-                try:
+            try:
+                # Iterate through the done tasks and complete them
+                for task in done:
                     # If complete_task does not return None, the build request failed
                     failure = self.complete_task(task, install_status)
                     if failure:
                         failed_build_requests.append(failure)
-                except Exception:
-                    # Terminate any active child processes if there's an installation error
-                    for task in active_tasks:
-                        task.terminate()
-                    raise
-                finally:
                     active_tasks.remove(task)
+            except Exception:
+                # Terminate any active child processes if there's an installation error
+                for task in active_tasks:
+                    task.terminate()
+                active_tasks.clear()  # they're all done now
+                raise
 
         self._clear_removed_tasks()
         if self.build_pq:
