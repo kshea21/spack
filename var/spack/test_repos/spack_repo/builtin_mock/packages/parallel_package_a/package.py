@@ -4,7 +4,7 @@
 
 import time
 
-from spack_repo.builtin.build_systems.generic import Package
+from spack_repo.builtin_mock.build_systems.generic import Package
 
 from llnl.util.filesystem import touch
 
