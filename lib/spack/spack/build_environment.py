@@ -1251,8 +1251,6 @@ class BuildProcess:
         self.p.join(timeout=timeout)
 
     def terminate(self):
-        return
-
         # Opportunity for graceful termination
         self.p.terminate()
         self.p.join(timeout=1)
