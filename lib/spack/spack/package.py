@@ -51,6 +51,7 @@ from llnl.util.symlink import symlink
 from spack.build_environment import MakeExecutable
 from spack.builder import BaseBuilder, Builder, register_builder
 from spack.config import determine_number_of_jobs
+from spack.jobserver import JobserverType
 from spack.deptypes import ALL_TYPES as all_deptypes
 from spack.directives import (
     build_system,
