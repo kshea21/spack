@@ -27,8 +27,4 @@ class JobserverType(enum.Enum):
 # make the calls to the packages to see what type of make they use (if they do)
     # return the max value assinment
 
-if js_type == JobserverType.NONE:
-    pass
-
-if js_type == Jo
     
